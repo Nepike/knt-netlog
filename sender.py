@@ -3,6 +3,7 @@ import subprocess
 import yaml
 import telebot
 from datetime import datetime
+import time
 
 BASE_DIR = "/srv/netlog"
 CONFIG_PATH = os.path.join(BASE_DIR, "config.yml")
@@ -32,20 +33,39 @@ def generate_report(nf_file):
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     with open(report_path, "w", encoding="utf-8") as f:
-        f.write(f"NetFlow Report\n")
+        f.write("NetFlow Report\n")
         f.write(f"Generated at: {datetime.now()}\n")
         f.write(f"Source file: {filename}\n")
-        f.write("="*80 + "\n\n")
+        f.write("="*100 + "\n\n")
         f.write(result.stdout)
 
     return report_path
 
+
+def get_ready_files():
+    files = []
+    now = time.time()
+
+    for f in os.listdir(CHUNKS_DIR):
+
+        if f.startswith("nfcapd.current"):
+            continue
+
+        if not f.startswith("nfcapd."):
+            continue
+
+        full_path = os.path.join(CHUNKS_DIR, f)
+
+        if now - os.path.getmtime(full_path) < 600:
+            continue
+
+        files.append(full_path)
+
+    return sorted(files)
+
+
 def process_files():
-    files = sorted([
-        os.path.join(CHUNKS_DIR, f)
-        for f in os.listdir(CHUNKS_DIR)
-        if f.startswith("nfcapd.")
-    ])
+    files = get_ready_files()
 
     for nf_file in files:
         print(f"Processing {nf_file}")
@@ -57,6 +77,7 @@ def process_files():
 
         os.remove(nf_file)
         print(f"Sent and removed {nf_file}")
+
 
 if __name__ == "__main__":
     process_files()

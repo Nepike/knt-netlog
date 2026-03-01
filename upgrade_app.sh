@@ -5,7 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "$script_dir"
 
-VENV_DIR="../virtualenv"
+VENV_DIR="./virtualenv"
 
 
 git reset --hard
