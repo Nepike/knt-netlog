@@ -5,7 +5,7 @@ import telebot
 from datetime import datetime
 import time
 
-BASE_DIR = "/srv/netlog"
+BASE_DIR = "/srv/netlog/script"
 CONFIG_PATH = os.path.join(BASE_DIR, "config.yml")
 
 with open(CONFIG_PATH) as f:
