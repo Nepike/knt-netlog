@@ -20,7 +20,6 @@ REPORTS_DIR = CONFIG["netflow"]["reports_dir"]
 
 
 bot = telebot.TeleBot(TOKEN, threaded=True)
-bot.apihelper.TIMEOUT = 120  # увеличенный таймаут для больших файлов
 
 
 def generate_report(nf_file):
