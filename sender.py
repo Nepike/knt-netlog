@@ -1,7 +1,7 @@
 import os
 import subprocess
 import yaml
-import telebot
+import requests
 from datetime import datetime
 import time
 import zipfile
@@ -19,7 +19,11 @@ CHUNKS_DIR = CONFIG["netflow"]["chunks_dir"]
 REPORTS_DIR = CONFIG["netflow"]["reports_dir"]
 
 
-bot = telebot.TeleBot(TOKEN, threaded=True)
+def send_file_telegram(file_path):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
+    with open(file_path, "rb") as f:
+        r = requests.post(url, files={"document": f}, data={"chat_id": CHAT_ID}, timeout=300)
+        r.raise_for_status()
 
 
 def generate_report(nf_file):
@@ -51,11 +55,11 @@ def send_report(report_path):
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipf.write(report_path, arcname=os.path.basename(report_path))
         with open(zip_path, "rb") as doc:
-            bot.send_document(CHAT_ID, doc)
+            send_file_telegram(doc)
         os.remove(zip_path)
     else:
         with open(report_path, "rb") as doc:
-            bot.send_document(CHAT_ID, doc)
+            send_file_telegram(doc)
 
 
 def get_ready_files():
