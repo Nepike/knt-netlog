@@ -46,7 +46,7 @@ def generate_report(nf_file):
 
 
 def send_report(report_path):
-    if os.path.getsize(report_path) > 20*1024*1024:
+    if True: #os.path.getsize(report_path) > 20*1024*1024:
         zip_path = report_path + ".zip"
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipf.write(report_path, arcname=os.path.basename(report_path))
