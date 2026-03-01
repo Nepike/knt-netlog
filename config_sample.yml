@@ -1,0 +1,7 @@
+telegram_bot:
+  token:
+  chat_id:
+
+netflow:
+  chunks_dir:
+  reports_dir:
