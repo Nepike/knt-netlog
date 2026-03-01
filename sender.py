@@ -4,6 +4,7 @@ import yaml
 import telebot
 from datetime import datetime
 import time
+import zipfile
 
 BASE_DIR = "/srv/netlog/script"
 CONFIG_PATH = os.path.join(BASE_DIR, "config.yml")
@@ -17,7 +18,10 @@ CHAT_ID = CONFIG["telegram_bot"]["chat_id"]
 CHUNKS_DIR = CONFIG["netflow"]["chunks_dir"]
 REPORTS_DIR = CONFIG["netflow"]["reports_dir"]
 
-bot = telebot.TeleBot(TOKEN)
+
+bot = telebot.TeleBot(TOKEN, threaded=True)
+bot.apihelper.TIMEOUT = 120  # увеличенный таймаут для больших файлов
+
 
 def generate_report(nf_file):
     filename = os.path.basename(nf_file)
@@ -42,15 +46,26 @@ def generate_report(nf_file):
     return report_path
 
 
+def send_report(report_path):
+    if os.path.getsize(report_path) > 20*1024*1024:
+        zip_path = report_path + ".zip"
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write(report_path, arcname=os.path.basename(report_path))
+        with open(zip_path, "rb") as doc:
+            bot.send_document(CHAT_ID, doc)
+        os.remove(zip_path)
+    else:
+        with open(report_path, "rb") as doc:
+            bot.send_document(CHAT_ID, doc)
+
+
 def get_ready_files():
     files = []
     now = time.time()
 
     for f in os.listdir(CHUNKS_DIR):
-
         if f.startswith("nfcapd.current"):
             continue
-
         if not f.startswith("nfcapd."):
             continue
 
@@ -70,14 +85,13 @@ def process_files():
     for nf_file in files:
         print(f"Processing {nf_file}")
 
-        report_path = generate_report(nf_file)
-
-        with open(report_path, "rb") as doc:
-            bot.send_document(CHAT_ID, doc)
-
-        os.remove(nf_file)
-        print(f"Sent and removed {nf_file}")
-
+        try:
+            report_path = generate_report(nf_file)
+            send_report(report_path)
+            os.remove(nf_file)
+            print(f"Sent and removed {nf_file}")
+        except Exception as e:
+            print(f"⚠️ Error processing {nf_file}: {e}")
 
 if __name__ == "__main__":
     process_files()
