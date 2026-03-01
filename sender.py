@@ -1,5 +1,7 @@
 import os
 import subprocess
+
+import paramiko
 import yaml
 import requests
 from datetime import datetime
@@ -17,6 +19,11 @@ CHAT_ID = CONFIG["telegram_bot"]["chat_id"]
 
 CHUNKS_DIR = CONFIG["netflow"]["chunks_dir"]
 REPORTS_DIR = CONFIG["netflow"]["reports_dir"]
+MACS_DIR = CONFIG["netflow"]["macs_dir"]
+
+MIKROTIK_IP = CONFIG["mikrotik"]["ip"]
+USERNAME = CONFIG["mikrotik"]["username"]
+PASSWORD = CONFIG["mikrotik"]["password"]
 
 
 def send_file_telegram(file_path):
@@ -53,13 +60,34 @@ def generate_report(nf_file):
     return report_path
 
 
-def send_report(report_path):
-    zip_path = report_path + ".zip"
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        zipf.write(report_path, arcname=os.path.basename(report_path))
 
-    send_file_telegram(zip_path)
-    os.remove(zip_path)
+def fetch_arp_table():
+    os.makedirs(MACS_DIR, exist_ok=True)
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(MIKROTIK_IP, username=USERNAME, password=PASSWORD)
+
+    stdin, stdout, stderr = ssh.exec_command("/ip arp print detail without-paging")
+    output = stdout.read().decode()
+    ssh.close()
+
+    filename = f"arp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    filepath = os.path.join(MACS_DIR, filename)
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("ARP/MAC Table\n")
+        f.write(f"Generated at: {datetime.now()}\n")
+        f.write("="*80 + "\n\n")
+        f.write(output)
+
+    return filepath
+
+
+def add_to_zip(zip_path, files):
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file in files:
+            zipf.write(file, arcname=os.path.basename(file))
+
 
 
 def get_ready_files():
@@ -84,15 +112,24 @@ def get_ready_files():
 
 def process_files():
     files = get_ready_files()
+    if not files:
+        print("Нет готовых файлов NetFlow")
+        return
 
     for nf_file in files:
         print(f"Processing {nf_file}")
-
         try:
             report_path = generate_report(nf_file)
-            send_report(report_path)
+            arp_file = fetch_arp_table()
+            zip_path = report_path + ".zip"
+            add_to_zip(zip_path, [report_path, arp_file])
+            send_file_telegram(zip_path)
+
             os.remove(nf_file)
-            print(f"Sent and removed {nf_file}")
+            os.remove(report_path)
+            os.remove(arp_file)
+            os.remove(zip_path)
+            print(f"Sent and removed {nf_file}, report, ARP dump, ZIP")
         except Exception as e:
             print(f"⚠️ Error processing {nf_file}: {e}")
 

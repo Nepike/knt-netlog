@@ -5,3 +5,9 @@ telegram_bot:
 netflow:
   chunks_dir:
   reports_dir:
+    macs_dir:
+
+mikrotik:
+  ip:
+  username:
+  password:
