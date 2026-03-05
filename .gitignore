@@ -3,3 +3,9 @@
 /.idea/*
 /.venv/*
 /virtualenv/*
+/data/*
+!/data/put_zips_here.txt
+/cache/*
+!/cache/dontremove.txt
+/flows.parquet
+/flows.csv
