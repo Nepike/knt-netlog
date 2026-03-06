@@ -42,9 +42,13 @@ def generate_report(nf_file):
         "nfdump",
         "-r", nf_file,
         "not (src ip 192.168.16.1 or src ip 192.168.16.10 or src ip 192.168.16.20 or src ip 192.168.16.30) "
-        "and src net 192.168.16.0/24 "
+        "and src net 192.168.16.0/20 "
         "and not dst net 192.168.16.0/24 "
-        "and not port 53",
+        "and not dst net 10.0.0.0/8 "
+        "and not dst net 172.16.0.0/12 "
+        "and not port 53 "
+        "and not port 67 "
+        "and not port 68 ",
         "-o", "extended"
     ]
 
